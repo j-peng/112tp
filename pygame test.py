@@ -1,7 +1,6 @@
 import pygame
 import random
 
-
 # # # # # # # # # # # # # # # # # # # # #
 ###         initializing game         ###
 # # # # # # # # # # # # # # # # # # # # #
@@ -9,7 +8,7 @@ pygame.init()
 
 clock = pygame.time.Clock()
 
-height = 750
+height = 600
 width = 1100
 
 # create the display surface
@@ -21,7 +20,8 @@ size = 200
 # colors
 green = (100, 200, 100)
 
-
+# top of ground
+groundY = height * 5/8
 
 # # # # # # # # # # # # # # # # # # # # #
 ###           loading images          ###
@@ -81,7 +81,8 @@ leftDuckLegs = flipImageList(duckLegs)
 
 appleImg = pygame.image.load('D:\\Documents\\Sophomore\\112\\tp\\apple.png')
 appleImg = pygame.transform.scale(appleImg, (50, 50))
-
+crate = pygame.image.load('D:\\Documents\\Sophomore\\112\\tp\\crate.png')
+crate = pygame.transform.scale(crate, (80, 80))
 
 
 # # # # # # # # # # # # # # # # # # # # #
@@ -96,38 +97,92 @@ quack =  pygame.mixer.Sound('D:\\Documents\\Sophomore\\112\\tp\\quack.wav')
 ###              classes              ###
 # # # # # # # # # # # # # # # # # # # # #
 
+class Overlay(object):
+    def __init__(self, width, height, title, color):
+        self.width = width
+        self.height = height
+        self.title = title
+        self.color = color
+    
+    def drawOverlay(self):
+        pygame.draw.rect(screen, self.color, 
+                         ((width - self.width) // 2, (height - self.height) // 2, 
+                         self.width, self.height))
+        print(screen, self.color, (width - self.width) // 2, (height - self.height) // 2, self.width, self.height)
+
 class Component(object):
     showHitBoxes = True
-    def __init__(self, x, y, image, size):
+    allComponents = []
+    # make an update all for the super class
+    # like redraw all
+    @staticmethod
+    def updateAll():
+        for component in allComponents:
+            component.update()
+
+    def __init__(self, x, y, image, size, weight):
         self.x = x
         self.y = y
         self.image = image
         self.size = size
+        self.weight = weight
         self.hitBox = pygame.Rect(self.x, self.y, self.size, self.size)
+        self.isHeld = False
+        Component.allComponents.append(self)
 
     def updateHitBoxes(self):
         self.hitBox = pygame.Rect(self.x, self.y, self.size, self.size)
 
     def update(self):
+        self.gravity()
         screen.blit(self.image, (self.x, self.y))
         if self.showHitBoxes == True:
             pygame.draw.rect(screen, (255, 0, 0), self.hitBox, 1)
+
+    def gravity(self):
+        pass
+        #for item in PlatformObject.platoformObjects:
+            # loop through items to find the one directly below you
+            #if self.hitBox.bottom < groundY and self.isHeld == False:
+                #self.y += self.weight
+                #self.updateHitBoxes()
 
     def move(self, xDist, yDist):
         self.x += xDist
         self.y += yDist
         self.updateHitBoxes()
 
+class ActiveComponent(Component):
+    # things that move on its own like the duck and npcs
+    def __init__(self, x, y, image, size, weight, legList):
+        super().__init__(x, y, image, size, weight)
 
-class Character(Component):
-    def __init__(self, x, y, image, size):
-        super().__init__(x, y, image, size)
+        self.legIndex = 0
+        self.legList = legList
+        self.walking = False
+        self.running = False
+
+class Person(ActiveComponent):
+    def __init__(self, x, y, image, size, weight, legList, idlePositions):
+        super().__init__(x, y, image, size, weight, legList)
+
+        self.idlePositions = idlePositions
+
+        self.walkSpeed = 1
+        self.runSpeed = 2
+
+    def targetDuck(self):
+        pass
+
+    def idle(self):
+        pass
+
+class Character(ActiveComponent):
+    def __init__(self, x, y, image, size, weight, legList):
+        super().__init__(x, y, image, size, weight, legList)
         self.currBod = image
 
         self.bod = image
-
-        self.legIndex = 0
-        self.legList = duckLegs
 
         self.flapIndex = 0
         self.flapList = rightDuckFlapping
@@ -141,11 +196,12 @@ class Character(Component):
 
         self.speed = 10
 
-        self.walking = False
-        self.running = False
-        self.jumping = False
         self.quacking = False
         self.flapping = False
+
+        # inspired by: https://techwithtim.net/tutorials/game-development-with-python/pygame-tutorial/jumping/
+        self.jumping = False
+        self.jumpHeight = 5
 
     def updateHitBoxes(self):
         if self.dir == 'right':
@@ -197,6 +253,13 @@ class Character(Component):
         else:
             self.quacking = False
 
+        if self.jumping == True:
+            yDist -= self.jumpHeight * 5
+            self.jumpHeight -= 1
+            if self.jumpHeight < -5:
+                self.jumpHeight = 5
+                self.jumping = False
+
         if self.heldObject != None:
             self.heldObject.move(xDist, yDist)
 
@@ -207,7 +270,7 @@ class Character(Component):
             self.walking = False
             self.legIndex = 0
         self.updateHitBoxes()
-
+    
     def updateLegs(self):
         self.legIndex += 1
         if self.legIndex > len(duckLegs) - 1:
@@ -234,16 +297,17 @@ class Character(Component):
         if self.quacking == True:
             self.quack()
             # can't quack and hold
-            self.heldObject = None
-
+            if self.heldObject != None:
+                self.heldObject.isHeld = False
+                self.heldObject = None
         screen.blit(self.currBod, (self.x, self.y))
         screen.blit(self.legList[self.legIndex], (self.x, self.y))
         pygame.draw.rect(screen, (255, 0, 0), self.beakHitBox, 1)
 
 class Object(Component):
-    def __init__(self, x, y, size, weight, image):
-        super().__init__(x, y, image, size)
-        self.weight = weight
+    # passive components that don't move on its own
+    def __init__(self, x, y, image, size, weight):
+        super().__init__(x, y, image, size, weight)
 
     def flip(self, direction):
         if direction == 'left':
@@ -251,14 +315,24 @@ class Object(Component):
         else:
             self.x += duck.size * 0.9
 
+class PlatformObject(Object):
+    platformObjects = []
+    # object you can jump on
+    def __init__(self, x, y, image, size, weight):
+        super().__init__(x, y, image, size, weight)
+        self.platformObjects.append(self)
+        self.topSurface = self.y
+
+
 
 # # # # # # # # # # # # # # # # # # # # #
 ###         creating objects          ###
 # # # # # # # # # # # # # # # # # # # # #
 
-duck = Character(100, 100, duckRight, 200)
-apple = Object(500, 200, 50, 6, appleImg)
-
+duck = Character(100, 100, duckRight, 200, 6, duckLegs)
+apple = Object(500, 200, appleImg, 50, 6)
+crate = PlatformObject(500, 100, crate, 80, 10)
+toDo = Overlay(500, 500, 'To Do', (255, 255, 255))
 
 
 # # # # # # # # # # # # # # # # # # # # #
@@ -273,36 +347,50 @@ while playing:
         if event.type == pygame.QUIT:
             playing = False
         elif event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_SPACE:
+            if event.key == pygame.K_e:
                 if duck.heldObject == None:
                     # try to pick something up
                     if duck.beakHitBox.colliderect(apple.hitBox):
                         duck.heldObject = apple
+                        apple.isHeld = True
                         duck.speed = 10 * (4 / duck.heldObject.weight)
+                        #duck.jumpHeight -= duck.heldObject.weight * 0.5
 
                 else:
                     # drop object
                     duck.heldObject = None
                     duck.speed = 10
-            elif (event.key == pygame.K_DOWN or event.key == pygame.K_UP or
-                  event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT):
+                    apple.isHeld = False
+                    #duck.jumpHeight = 5
+            elif (event.key == pygame.K_DOWN or event.key == pygame.K_UP):
                 duck.walking = True
-            
-            #elif (event.key == pygame.K_q):
-                # quack
+            elif (event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT):
+                duck.walking = True
+                # double clicking left or right should make the duck run
+                lastClickTime = pygame.time.get_ticks
+                if event.key == pygame.K_LEFT:
+                    lastKey = 'left'
+                else:
+                    lastKey = 'right'
                 
-            
-            #elif (event.key == pygame.K_w):
-                # flap
-            #    duck.flapping = True
+            elif event.key == pygame.K_SPACE and duck.jumping == False:
+                # if space is pressed and we're not jumping, we should jump
+                duck.jumping = True
+
+            elif event.key == pygame.K_TAB:
+                print('hi')
+                toDo.drawOverlay() # won't draw cos background color covers
+ 
 
     keys = pygame.key.get_pressed()
     duck.move(keys)
     screen.fill((200, 235, 250))
-    pygame.draw.rect(screen, green, pygame.Rect(0, height * 3/4, width, height * 1/4))
+    pygame.draw.rect(screen, green, pygame.Rect(0, groundY, width, height - groundY))
         
-    apple.update()
-    duck.update()
+    #apple.update()
+    #crate.update()
+    #duck.update()
+    Component.updateAll()
     pygame.display.flip()
 
 pygame.quit()
