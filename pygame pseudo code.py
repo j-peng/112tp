@@ -60,6 +60,14 @@ def lowestSprite(spriteList):
             lowestSprite = sprite
     return lowestSprite
 
+# check it two rectangles collide
+# inspired by: https://www.geeksforgeeks.org/find-two-rectangles-overlap/
+def collide(rect1, rect2):
+    if ((rect1.x > rect2.x + rect2.width) or (rect2.x > rect1.x + rect1.width) or
+        (rect1.y < rect2.y + rect2.height) or (rect2.y < rect1.y + rect1.height)):
+        return False
+    return True
+
 """
 all object
  -> moving objects
@@ -79,6 +87,14 @@ all objects have: (x,y), update, move, gravity/falling
     -> platforms (can jump on) - top surface
 """
 
+# view area sprite around moving objects
+class ViewArea(pygame.sprite.Sprite):
+    def __init__(self, x, y, width, height):
+        pygame.sprite.Sprite.__init__(self)
+        # make a rectangle
+        self.rect = pygame.Rect(x, y, width, height)
+
+
 class GameObject(pygame.sprite.Sprite):
     allGameObjects = pygame.sprite.Group()
 
@@ -95,7 +111,6 @@ class GameObject(pygame.sprite.Sprite):
         for sprite in GameObject.allGameObjects:
             # might want to just move active object to increase efficiency?
             sprite.move(xDir, 0)
-
 
     def __init__(self, x, y, image):
         self.x = x
@@ -166,8 +181,8 @@ class MovingObject(GameObject):
 
         # n is how far around the thing can see
         self.viewDist = viewDist
-        self.proxRect = pygame.Rect(self.x+self.viewDist, self.y+self.viewDist, 
-                                    self.rect.width+2*self.viewDist, self.rect.height+2*self.viewDist)
+        self.proxSprite = ViewArea(self.x-self.viewDist, self.y-self.viewDist, 
+                                   self.rect.width+2*self.viewDist, self.rect.height+2*self.viewDist)
 
     def isColliding(self, dir):
         # check if there is a collision in a direction
@@ -180,6 +195,31 @@ class MovingObject(GameObject):
             return False
         elif dir == 'up':
             pass
+    
+    def getObjectsInView(self):
+        objectsSeen = pygame.sprite.spritecollide(self.proxSprite, GameObject.allGameObjects, False)
+        objectsSeen.remove(self)
+        return objectsSeen
+
+    def check(self, dir):
+        # check if there is an object nearby in a direction
+        # if there is, return the sprite, else return False
+        objectsSeen = self.getObjectsInView()
+        for sprite in objectsSeen:
+            if dir == 'left':
+                if isClose(sprite.rect.right, self.proxSprite.rect.left, 5):
+                    return sprite
+            elif dir == 'right':
+                if isClose(sprite.rect.left, self.proxSprite.rect.right, 5):
+                    return sprite
+            elif dir == 'up':
+                if isClose(sprite.rect.bottom, self.proxSprite.rect.bottom, 5):
+                    return sprite
+            elif dir == 'down':
+                if isClose(sprite.rect.top, self.proxSprite.rect.bottom, 5):
+                    return sprite
+
+        return False
 
     # move using walk or run speeds
     def walk(self, inX, inY):
@@ -188,19 +228,39 @@ class MovingObject(GameObject):
         else:
             speed = self.walkSpeed
 
-        # walk left only if theres nothing left of you or if there is something left of you, its bottom is above you
+        # walk left only if theres nothing left of you or if there is something left of you, 
+        # its bottom is above you
         # walk right is nothing right or right object is above you
         # walk up if nothing up or up objects bottom is above you
         # walk down if nothing below
         if inX < 0:
-            self.move(-speed, 0)
+            sprite = self.check('left')
+            if (sprite == False):
+                # nothing left of you, move left
+                self.move(-speed, 0)
+            else:
+                # something left of you, check its bottom
+                if sprite.rect.bottom < self.rect.bottom:
+                    self.move(-speed, 0)
         elif inX > 0:
-            self.move(speed, 0)
-        
+            sprite = self.check('right')
+            if (sprite == False):
+                self.move(speed, 0)
+            else:
+                if sprite.rect.bottom < self.rect.bottom:
+                    self.move(speed, 0)
+            
         if inY < 0:
-            self.move(0, -speed)
+            sprite = self.check('up')
+            if (sprite == False):
+                self.move(0, -speed)
+            else:
+                if sprite.rect.bottom < self.rect.bottom:
+                    self.move(0, -speed)
         elif inY > 0:
-            self.move(0, speed)
+            sprite = self.check('down')
+            if (sprite == False):
+                self.move(0, speed)
         """
         checkLeft = self.isColliding('left')
         if inX < 0:
@@ -225,13 +285,13 @@ class MovingObject(GameObject):
     # update the hitboxes
     def updateHitbox(self):
         super().updateHitbox()
-        self.proxRect.centerx = self.rect.centerx
-        self.proxRect.centery = self.rect.centery
+        self.proxSprite.rect.centerx = self.rect.centerx
+        self.proxSprite.rect.centery = self.rect.centery
 
     # update the object on screen
     def update(self):
         super().update()
-        pygame.draw.rect(screen, (0, 0, 0), self.proxRect, 1)
+        pygame.draw.rect(screen, (0, 0, 0), self.proxSprite.rect, 1)
 
 class Duck(MovingObject):
     def __init__(self, x, y, image, walkCycleLegsList, bodyDictionary, walkSpeed, runSpeed, viewDist):
