@@ -1,6 +1,7 @@
 import pygame
 import random
 import math
+import os
 
 # # # # # # # # # # # # # # # # # # # # #
 ###       Unfinished Duck Game        ###
@@ -26,12 +27,7 @@ screen = pygame.display.set_mode((width, height))
 #screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
 #screen2 = pygame.display.set_mode((200, 200))
 
-class Game(object):
-    def __init__(self):
-        self.paused = False
-        self.showHitBoxes = False
 
-game = Game()
 
 # # # # # # # # # # # # # # # # # # # # #
 ###         helper functions          ###
@@ -126,6 +122,31 @@ def collectedItems(item):
             else:
                 return False
 
+# draw fence barricade
+def drawBarricade(startX, n, image, crate = False, gate = False):
+    barricadeList = []
+    for i in range(n):
+        y = height - i * 80
+        if i == 3:
+            if crate == True:
+                platform = Platform(startX, y, crateImg, 25)
+            elif gate == True:
+                platform = Platform(startX, y, fenceGateImg, 100, False)
+            else:
+                platform = Platform(startX, y, image, 100, False)
+        else:
+            platform = Platform(startX, y, image, 100, False)
+        barricadeList.append(platform)
+    return barricadeList
+
+def makeLoadString(imageName):
+    filePath = str(os.getcwd())
+    # get rid of file name
+    filePath.replace('UnfinishedDuckGame.py', '')
+    filePath += '\\media\\' + imageName + '.png'
+    return filePath
+
+#print (makeLoadString('hello'))
 
 # # # # # # # # # # # # # # # # # # # # #
 ###           loading images          ###
@@ -189,9 +210,13 @@ person3Legs = [person3Legs0, person3Legs1, person3Legs2, person3Legs1, person3Le
 person3Head = pygame.image.load('D:\\Documents\\Sophomore\\112\\tp\\media\\person3Head.png')
 
 # environment
-lakeImg = pygame.image.load('D:\\Documents\\Sophomore\\112\\tp\\media\\realLake.png')
+lakeImg = pygame.image.load('D:\\Documents\\Sophomore\\112\\tp\\media\\lake.png')
+caveImg = pygame.image.load('D:\\Documents\\Sophomore\\112\\tp\\media\\cave.png')
 blanketImg = pygame.image.load('D:\\Documents\\Sophomore\\112\\tp\\media\\blanket.png')
 signImg = pygame.image.load('D:\\Documents\\Sophomore\\112\\tp\\media\\sign.png')
+tabSignImg = pygame.image.load('D:\\Documents\\Sophomore\\112\\tp\\media\\tabSign.png')
+lakeSignImg = pygame.image.load('D:\\Documents\\Sophomore\\112\\tp\\media\\lakeSign.png')
+dragonSignImg = pygame.image.load('D:\\Documents\\Sophomore\\112\\tp\\media\\dragonSign.png')
 crateImg = pygame.image.load('D:\\Documents\\Sophomore\\112\\tp\\media\\crate.png')
 crateImg = pygame.transform.scale(crateImg, (80, 80))
 fenceImg = pygame.image.load('D:\\Documents\\Sophomore\\112\\tp\\media\\fence.png')
@@ -236,6 +261,7 @@ loafImg = pygame.image.load('D:\\Documents\\Sophomore\\112\\tp\\media\\loaf.png'
 keyImg = pygame.image.load('D:\\Documents\\Sophomore\\112\\tp\\media\\key.png')
 wateringCanImg = pygame.image.load('D:\\Documents\\Sophomore\\112\\tp\\media\\wateringCan.png')
 hatImg = pygame.image.load('D:\\Documents\\Sophomore\\112\\tp\\media\\hat.png')
+cowImg = pygame.image.load('D:\\Documents\\Sophomore\\112\\tp\\media\\cow.png')
 
 # stage 2 objects
 houseImg = pygame.image.load('D:\\Documents\\Sophomore\\112\\tp\\media\\house.png')
@@ -266,6 +292,14 @@ basketImg = pygame.image.load('D:\\Documents\\Sophomore\\112\\tp\\media\\basket.
 ballImg = pygame.image.load('D:\\Documents\\Sophomore\\112\\tp\\media\\ball.png')
 bbqImg = pygame.image.load('D:\\Documents\\Sophomore\\112\\tp\\media\\bbq.png')
 
+# final objects
+swordImg = pygame.image.load('D:\\Documents\\Sophomore\\112\\tp\\media\\sword.png')
+bigRockImg = pygame.image.load('D:\\Documents\\Sophomore\\112\\tp\\media\\bigRock.png')
+statueImg = pygame.image.load('D:\\Documents\\Sophomore\\112\\tp\\media\\statue.png')
+
+# splash image
+splashImg = pygame.image.load('D:\\Documents\\Sophomore\\112\\tp\\media\\splash.png')
+
 # # # # # # # # # # # # # # # # # # # # #
 ###     loading sounds and fonts      ###
 # # # # # # # # # # # # # # # # # # # # #
@@ -273,33 +307,15 @@ bbqImg = pygame.image.load('D:\\Documents\\Sophomore\\112\\tp\\media\\bbq.png')
 # found on: https://freesound.org/
 quack =  pygame.mixer.Sound('D:\\Documents\\Sophomore\\112\\tp\\media\\quack.wav')
 
-# taken from my font folder, one of the default fonts found on a windows computer
+titleFont =  pygame.font.Font('D:\\Documents\\Sophomore\\112\\tp\\media\\duckGameFont.TTF', 48)
 heading = pygame.font.Font('D:\\Documents\\Sophomore\\112\\tp\\media\\duckGameFont.TTF', 32) 
+subheading = pygame.font.Font('D:\\Documents\\Sophomore\\112\\tp\\media\\duckGameFont.TTF', 24)
 paragraph = pygame.font.Font('D:\\Documents\\Sophomore\\112\\tp\\media\\duckGameFont.TTF', 18) 
 
 
 # # # # # # # # # # # # # # # # # # # # #
 ###              classes              ###
 # # # # # # # # # # # # # # # # # # # # # 
-
-"""
-all object
- -> moving objects
-    -> duck
-    -> people
- -> non moving objects
-    -> passive items
-    -> platforms (can jump on)
-
-all objects have: (x,y), update, move, gravity/falling
-
- -> moving objects - walk cycle, speed, runspeed
-    -> duck - jump, flap, quack, pickup, swim (make legs disappear)
-    -> people - idle locations/activities, state (chase, idle, scared)
- -> non moving objects
-    -> passive items - weight
-    -> platforms (can jump on) - top surface
-"""
 
 # view area sprite around moving objects
 class RectSprite(pygame.sprite.Sprite):
@@ -321,6 +337,9 @@ class BackgroundObject(pygame.sprite.Sprite):
         self.y = groundY - self.rect.height + overlapY
         self.rect.y = self.y
         self.rect.x = self.x
+
+        self.visible = True
+
         # add it to the allGameObjects group
         pygame.sprite.Sprite.__init__(self, BackgroundObject.allBackgroundObjects)
 
@@ -332,9 +351,19 @@ class BackgroundObject(pygame.sprite.Sprite):
         self.rect.x = self.x
     # update the object on screen
     def update(self):
-        screen.blit(self.image, (self.x, self.y))
+        if self.visible == True:
+            screen.blit(self.image, (self.x, self.y))
 
+class Game(object):
+    def __init__(self):
+        self.paused = False
+        self.started = False
+        self.showHitBoxes = False
+        self.theSword = 'not found yet'
+        self.statue = BackgroundObject(100, statueImg, 10)
+        self.statue.visible = False
 
+game = Game()
 
 class GameObject(pygame.sprite.Sprite):
     allGameObjects = pygame.sprite.Group()
@@ -345,6 +374,7 @@ class GameObject(pygame.sprite.Sprite):
 
     @staticmethod
     def moveBackground(dir):
+        #print(GameObject.globalX)
         duck.checkStage()
         if duck.running:
             moveSpeed = duck.runSpeed
@@ -357,6 +387,7 @@ class GameObject(pygame.sprite.Sprite):
         elif dir == 'right':
             xDir = moveSpeed
             GameObject.globalX += moveSpeed
+
         for sprite in GameObject.allGameObjects:
             # might want to just move active object to increase efficiency?
             # move it unless its the held item
@@ -373,7 +404,6 @@ class GameObject(pygame.sprite.Sprite):
                 value = d[key]
                 x = value[0]
                 d[key] = (x + xDir, value[1])
-
 
     def __init__(self, x, y, image):
         self.x = x
@@ -458,6 +488,47 @@ class GameObject(pygame.sprite.Sprite):
         self.remove(self.groups())
         self.visible = False
 
+class Cow(GameObject):
+    def __init__(self, x, y, image, leftFence, rightFence):
+        super().__init__(x, y, image)
+        self.leftFence = leftFence
+        self.rightFence = rightFence
+        self.leftMost = self.leftFence.rect.left
+        self.rightMost = self.rightFence.rect.right
+        self.dir = 'right'
+        self.xDir = 1
+    
+    def flip(self):
+        self.xDir *= -1
+        if self.dir == 'left':
+            self.dir = 'right'
+        else:
+            self.dir = 'left'
+        self.image = flipImage(self.image)
+
+    def testHitPlatform(self):
+        pass
+
+    def checkIsSupported(self):
+        pass
+
+    def moveWithinFence(self):
+        self.move(self.xDir, 0)
+        if isClose(self.rect.right, self.rightMost, 10) and self.dir == 'right':
+            self.flip()
+        elif isClose(self.rect.left, self.leftMost, 10) and self.dir == 'left':
+            self.flip()
+
+    def updateBounds(self):
+        # move cow bound postions
+        self.leftMost = self.leftFence.rect.left
+        self.rightMost = self.rightFence.rect.right
+
+    def update(self):
+        super().update()
+        self.moveWithinFence()
+        self.updateBounds()
+    
 
 class MovingObject(GameObject):
     def __init__(self, x, y, image, walkCycleLegsList, bodyDictionary, walkSpeed, runSpeed, viewDist):
@@ -641,11 +712,28 @@ class Duck(MovingObject):
         self.sowedSeeds = set() # set of seed (imgs) duck has sowed
     
     def walk(self, inX, inY):
-        super().walk(inX, inY)
-        self.checkInLake()
-        self.checkIsSupported()
-        self.checkBackgroundMove()
-        self.onCoolDown = False
+        # restrain to 1900 (cave) - -6000 (sword)
+        if -6100 <= GameObject.globalX <= 1900:
+            super().walk(inX, inY)
+            self.checkInLake()
+            self.checkIsSupported()
+            self.checkBackgroundMove()
+            self.onCoolDown = False
+        
+        # this accounts for clipping
+        elif 1900 < GameObject.globalX and self.dir == 'right':
+            super().walk(inX, inY)
+            self.checkInLake()
+            self.checkIsSupported()
+            self.checkBackgroundMove()
+            self.onCoolDown = False
+        elif -6100 > GameObject.globalX and self.dir == 'left':
+            super().walk(inX, inY)
+            self.checkInLake()
+            self.checkIsSupported()
+            self.checkBackgroundMove()
+            self.onCoolDown = False
+        #print(GameObject.globalX, self.dir)
 
     def fall(self):
         # fall until:
@@ -730,6 +818,10 @@ class Duck(MovingObject):
                 # not a platform, can hold
                 else:
                     self.heldItem = item
+                    if item == game.theSword:
+                        # flip it
+                        item.image = pygame.transform.flip(item.image, False, True)
+                        self.completeTask('wield the sword')
                     self.heldItem.isHeld = True
                     self.heldItem.holder = duck
 
@@ -745,6 +837,9 @@ class Duck(MovingObject):
     def drop(self):
         if self.heldItem != None:
             # drop what you're holding
+            if self.heldItem == game.theSword:
+                # flip it when you drop it
+                self.heldItem.image = pygame.transform.flip(self.heldItem.image, False, True)
             self.heldItem.falling = True
             self.heldItem.isHeld = False
             self.heldItem.holder = None
@@ -776,6 +871,7 @@ class Duck(MovingObject):
             checklist.taskDict = stage2TaskDict
             checklist.isVisible = True
             game.paused = True
+
             # start moving the people
             person2.state = 'idle'
             person3.state = 'idle'
@@ -783,7 +879,46 @@ class Duck(MovingObject):
             #                                     person3IdleLocations, mainHouse.rect.right + 200)
             #initStage2(600, flowerDict, laundryDict)
             #pygame.sprite.LayeredUpdates.move_to_front(duck)
+        
+        # progress to final stage
+        elif (self.currStageTaskDict.keys() == stage2TaskDict.keys() and 
+              GameObject.globalX < -5300):
+            game.theSword = initFinalStage()
+            self.currStageTaskDict = finalStageTaskDict
+            checklist.taskDict = finalStageTaskDict
+            checklist.isVisible = True
+            game.paused = True
 
+
+    def checkMoveBasedTasks(self):
+        # these tasks are dependent on movement only (not objects)
+        if self.currStageTaskDict.keys() == stage2TaskDict.keys():
+            # over chimney
+            if (isClose(duck.rect.centerx, game.mainHouse.rect.right - 20, 10) and
+                isClose(duck.rect.centery, game.mainHouse.rect.top, 10)):
+                self.completeTask('break into the house to steal the keys')
+
+                # kill door, move duck
+                game.door.delete()
+                duck.x = game.mainHouse.rect.centerx - 20
+                duck.y = game.mainHouse.rect.bottom - 40
+                duck.updateHitbox()
+                duck.falling = False
+                    
+                # kill the barrier
+                game.stage2BarricadeList[3].delete()
+        elif self.currStageTaskDict.keys() == finalStageTaskDict.keys():
+            #pygame.sprite.collide_rect(self, game.cave)
+            #print(self.rect.centerx, game.cave.rect.right - 50)
+            if (isClose(self.rect.centerx, game.cave.rect.right - 50, 10) and 
+                self.heldItem == game.theSword):
+                self.completeTask('slay the dragon')
+                # win game!
+                #game.won = True
+                game.statue.visible = True
+                game.finalMessage.visible = True
+                
+                #game.endMessage = visible
 
     def checkTasks(self):
         # holding something and has begun a stage
@@ -806,20 +941,20 @@ class Duck(MovingObject):
                     self.completeTask('free the cattle')
                     game.fenceGate.delete()
                     game.stage1Key.delete()
-                    game.stage1Blockade.delete()
+                    for sprite in game.stage1BarricadeList:
+                        sprite.delete()
 
             # stage 2
             elif self.currStageTaskDict.keys() == stage2TaskDict.keys():
-                if isClose(door.rect.centerx, mailbox.rect.centerx, 50):
+                if isClose(game.door.rect.centerx, mailbox.rect.centerx, 50):
                     self.completeTask('deliver the mail')
                 laundryCount = 0
                 for laundryItem in laundryItems:
                     if isClose(laundryItem.rect.centerx, laundryBasket.rect.centerx, 25):
                         laundryCount += 1
-                # all laundyr near basket
+                # all laundry near basket
                 if laundryCount == len(laundryItems):
                     self.completeTask('collect the laundry')
-                
 
         else:
             # started a stage
@@ -831,9 +966,9 @@ class Duck(MovingObject):
                         self.completeTask('prepare a salad')
                 # stage 2
                 elif self.currStageTaskDict.keys() == stage2TaskDict.keys():
-                    # prepare a salad
+                    # flower bouquets
                     if collectedItems(flowerList):
-                        self.completeTask('assemble a flower bouquet')
+                        self.completeTask('assemble a flower bouquet for the picnic')
     
     def completeTask(self, task):
         if self.currStageTaskDict[task] == False:
@@ -882,6 +1017,8 @@ class Duck(MovingObject):
         self.updateBeak()
         if self.heldItem != None:
             self.heldItem.move(xDir, yDir)
+        if self.currStageTaskDict != None:
+            self.checkMoveBasedTasks()
 
     def update(self):
         if self.jumping:
@@ -1149,8 +1286,12 @@ class Person(MovingObject):
         if self.withinView(duck):
             # duck is within view!
             if duck.heldItem != None:
-                # chase the duck!
-                self.state = 'angry'
+                if duck.heldItem == game.theSword:
+                    # holding the sword
+                    self.state = 'scared'
+                else:
+                    # chase the duck!
+                    self.state = 'angry'
             # can't scare away if angry
             elif self.state != 'angry' and duck.quacking and random.random() < 0.05:
                 self.state = 'scared'
@@ -1307,9 +1448,95 @@ class Overlay(pygame.sprite.Sprite):
     def update(self):
         pygame.draw.rect(screen, (236, 220, 189), self.rect)
         screen.blit(self.heading, self.headingRect) 
-        self.renderTaskList(self.x + 50, self.y + 70, 30)
+        self.renderTaskList(self.x + 25, self.y + 75, 30)
 
+class Splash(Overlay):
+    def __init__(self, x, y, title, width, height, image):
+        super().__init__(x, y, title, {}, width, height)
+        self.margin = 50
+        self.heading = titleFont.render(title, True, (83, 71, 56)) 
+        self.headingRect = self.heading.get_rect() 
+        self.headingRect.x = self.x + width // 2 - self.headingRect.width // 2
+        self.headingRect.y = self.y + self.margin
+        self.image = image
+        self.imgX = self.margin
+        self.imgY = self.margin * 3
 
+        self.instructionsList = ['<enter>  -  begin', '<i>  -  learn more',
+                                 '<delete>  -  quit']
+
+        self.info = ['this is a single player',
+                     'stealth game',
+                     'the objective is to be a duck', 
+                     'and do duck things',
+                     '',
+                     '<i>  -  back']
+        
+        self.onDisplay = self.instructionsList
+        self.spacing = 80
+
+    def renderInstructions(self):
+        startY = 200
+        startX = width // 2 + self.margin
+        for item in self.onDisplay:
+            text = subheading.render(item, True, (83, 71, 56))
+            textRect = text.get_rect() 
+            textRect.x = startX
+            textRect.y = startY
+            screen.blit(text, textRect) 
+            startY += self.spacing
+
+    def update(self):
+        pygame.draw.rect(screen, (255, 255, 255), self.rect)
+        self.renderInstructions()
+        screen.blit(self.heading, self.headingRect) 
+        screen.blit(self.image, (self.imgX, self.imgY)) 
+
+# messages rendered at bottom center of screen
+class GameMessage(object):
+    def __init__(self, messageList, displayTime = None):
+        self.messageList = messageList
+        self.messageIndex = 0
+
+        self.updateText()
+
+        self.visible = False
+        self.displayTime = displayTime
+        self.timer = 0
+    
+    def updateText(self):
+        self.message = subheading.render(self.messageList[self.messageIndex], True, (83, 71, 56))
+        self.textRect = self.message.get_rect() 
+        self.textRect.centerx = width // 2
+        self.textRect.y = height - 100
+    
+    # change to next message in list
+    def changeMessage(self):
+        if self.messageIndex < len(self.messageList) - 1:
+            self.messageIndex += 1
+            self.updateText()
+        else:
+            # no longer visible
+            self.visible = False
+
+    def update(self):
+        screen.blit(self.message,  self.textRect)
+        self.timer += 1
+        if self.displayTime != None and self.timer % self.displayTime == 0:
+            self.changeMessage()
+
+game.finalMessage = GameMessage(['and  that  is  how  the  duck  saved  the  town', 
+                                 'the  end', 
+                                 '',
+                                 'thank  you  for  playing',
+                                 'unfinished  duck  game',
+                                 'illustrated  and  programmed  by  janet  peng'], 60)
+
+game.initialMessage = GameMessage(['',
+                                   'this  is  a  story  about  a  duck',
+                                   'who  calls  this  picnic  blanket  at  the  outskirts  of  town  home',
+                                   '',
+                                   'press  tab  to  check  your  to  do  list'], 70)
 
 # # # # # # # # # # # # # # # # # # # # #
 ###           main game loop          ###
@@ -1324,14 +1551,18 @@ stage1Tasks = [ 'bake in the lake',
 
 stage2Tasks = [ 'deliver the mail',
                 'collect the laundry',
-                'assemble a flower bouquet',
+                'assemble a flower bouquet for the picnic',
                 'play soccer with the kid',
-                'break into the house',
-                'steal the keys' ]
+                'break into the house to steal the keys' ]
+
+# finalTasks.append('slay the dragon') when the duck gets the sword?
+finalTasks = [ 'wield the sword',
+               'slay the dragon' ]
 
 
 stage1TaskDict = initiateTasks(stage1Tasks)
 stage2TaskDict = initiateTasks(stage2Tasks)
+finalStageTaskDict = initiateTasks(finalTasks)
 
 # images (keys) : weight (value) - weight should be at least 4
 vegDict = {lettuceImg: 10, carrotImg: 6, radishImg: 6}
@@ -1388,13 +1619,29 @@ def initStage1(startX, vegDict, seedDict, breadDict):
     cattleX = table.rect.right + random.randrange(100, 200)
     fenceRect = fenceImg.get_rect()
     fenceY = groundY - fenceRect.height
-    fenceX = cattleX
+    backFenceX = cattleX
+    frontFenceX = cattleX
+
+    # bakground fences
+    for i in range(5):
+        if i == 0:
+            firstFence = BackgroundObject(backFenceX, fenceImg)
+        elif i == 4:
+            lastFence = BackgroundObject(backFenceX, fenceImg)
+        else:
+            BackgroundObject(backFenceX, fenceImg)
+        backFenceX += fenceRect.width
+        
+    cow = Cow(cattleX, 90, cowImg, firstFence, lastFence)
+    
+    # foreground fences with fence gates
     for i in range(5):
         if i == 2:
-            game.fenceGate = Platform(fenceX, fenceY, fenceGateImg, 100, False)
+            game.fenceGate = Platform(frontFenceX, fenceY + 25, fenceGateImg, 100, False)
         else:
-            Platform(fenceX, fenceY, fenceImg, 100, False)
-        fenceX += fenceRect.width
+            Platform(frontFenceX, fenceY + 25, fenceImg, 100, False)
+        frontFenceX += fenceRect.width
+
 
     # randomly place watering can
     Item(barnX + random.randrange(100, 300), random.randrange(groundY + 150, height - 100), 
@@ -1418,8 +1665,8 @@ def initStage1(startX, vegDict, seedDict, breadDict):
                 hatImg, 5, (15, -12))
 
     # right side barricade
-    barricadeImg = pygame.transform.scale(crateImg, (80, 500))
-    game.stage1Blockade = Platform(fenceX + fenceRect.width + 200, groundY - 150, barricadeImg, 100, False)
+    game.stage1BarricadeList = drawBarricade(backFenceX + fenceRect.width + 200, 6, fenceImg)
+    #game.stage1Blockade = Platform(fenceX + fenceRect.width + 200, groundY - 150, barricadeImg, 100, False)
 
     return(barn, soilPatch, vegList, table, bowl)
 
@@ -1439,7 +1686,9 @@ def placeHouse(startX):
             
         else:
             if i == 0:
+                # place laundry line and tree
                 laundryLine = BackgroundObject(houseX + housePartRect.width, laundryLineImg, -100)
+                BackgroundObject(laundryLine.rect.right - 100, trees[random.randrange(len(trees))], 8)
             Platform(houseX, housePartYList[i], housePartsList[i], 100, False)
             houseX -= housePartRect.width
 
@@ -1475,7 +1724,7 @@ def initStage2(startX, flowerDict, laundryDict, mailDict):
         # inspired by clock: http://www.cs.cmu.edu/~112/notes/notes-graphics.html
         rockX = flowerPatchCenterX - adjustment + hozRadius * math.cos(angle)
         rockY = 420 - vertRadius * math.sin(angle)
-        Item(rockX, rockY, rockImg, 10)
+        BackgroundObject(rockX, rockImg, rockY - 280)
         angle += 20
 
     flowerList = []
@@ -1492,7 +1741,7 @@ def initStage2(startX, flowerDict, laundryDict, mailDict):
     laundryItems = placeItems(laundryDict, laundryLine.rect.left, laundryLine.rect.right, 200, 220, False)
 
     # randomly place basket
-    laundryBasket = Item(houseX + random.randrange(1200, 1500), 
+    laundryBasket = Platform(houseX + random.randrange(1200, 1500), 
                          random.randrange(groundY + 150, height - 100),
                          basketImg, 20)
 
@@ -1504,6 +1753,9 @@ def initStage2(startX, flowerDict, laundryDict, mailDict):
     # randomly place soccer ball
     SpecialItem(houseX + 600, random.randrange(groundY, height - 100), 
                 ballImg, 6, (15, 100))
+
+    # barricade
+    game.stage2BarricadeList = drawBarricade(laundryLine.rect.right + 300, 6, fenceImg, False, True)
 
     # make a dictionary of all the locations the person can idle to
     person2IdleLocations = {'mail': (mailboxX, 350), 
@@ -1530,33 +1782,41 @@ def spawnStage2People(idleLocations2, x2, idleLocations3, x3):
                      person3HeadDict, 2, 5, 100, idleLocations3)
     return person2, person3
 
-barn, soilPatch, vegList, table, bowl = initStage1(1000, vegDict, seedDict, breadDict)
-mainHouse, mailbox, door, laundryBasket, laundryItems, flowerList, person2IdleLocations, person3IdleLocations= initStage2(3600, flowerDict, laundryDict, mailDict)
+def initFinalStage():
+    sword = Item(1130, 400, swordImg, 8)
+    Platform(1000, 450, bigRockImg, 200, False)
+    return sword
 
-person2, person3 = spawnStage2People(person2IdleLocations, mainHouse.rect.right, 
-                                     person3IdleLocations, mainHouse.rect.right + 200)
+barn, soilPatch, vegList, table, bowl = initStage1(1000, vegDict, seedDict, breadDict)
+game.mainHouse, mailbox, game.door, laundryBasket, laundryItems, flowerList, person2IdleLocations, person3IdleLocations= initStage2(3600, flowerDict, laundryDict, mailDict)
+
+person2, person3 = spawnStage2People(person2IdleLocations, game.mainHouse.rect.right, 
+                                     person3IdleLocations, game.mainHouse.rect.right + 200)
+
 
 lake = BackgroundObject(-800, lakeImg, 230)
+game.cave = BackgroundObject(-2200, caveImg, 180)
+generateBackground(10, trees, -1600, 50, 8)
 duckHome = BackgroundObject(50, blanketImg, 200)
-sign = Item(400, 200, signImg, 6)
+# signs
+Item(500, 200, signImg, 6)
+#Item(300, 200, tabSignImg, 6)
+Item(-50, 200, lakeSignImg, 6)
+Item(-900, 200, dragonSignImg, 6)
 
-# braw first fence barricade
-def drawBarricade(startX, n, image, crate = False):
-    for i in range(n):
-        y = height - i * 80
-        if crate == True and i == 3:
-            Platform(startX, y, crateImg, 25)
-        else:
-            Platform(startX, y, image, 100, False)
-
+# first set of barricades with crate
 drawBarricade(800, 6, fenceImg, True)
 
 
 duckImageDict = {'stand': duckBod, 'flap': duckFlapping, 'quack': duckQuacking}
-duck = Duck(100, 350, duckBod, duckLegs, duckImageDict, 5, 10, 5)
+duck = Duck(100, 350, duckBod, duckLegs, duckImageDict, 5, 100, 5)
 duck.falling = False
 
 checklist = Overlay(200, 150, 'to do', duck.currStageTaskDict, 400, 300)
+splash = Splash(0, 0, 'unfinished  duck  game', width, height, splashImg)
+menuDict = {'press delete to exit': False,
+            'press shift to show hitboxes': False}
+menu = Overlay(200, 150, 'menu', menuDict, 400, 300)
 
 
 
@@ -1568,79 +1828,113 @@ while playing:
             playing = False
         
         elif event.type == pygame.KEYDOWN:
-            # jump
-            if event.key == pygame.K_SPACE and duck.jumping == False and duck.falling == False:
-                # can't jump when jumping or falling
-                duck.jumping = True
+            if game.started == True:
+                # jump
+                if event.key == pygame.K_SPACE and duck.jumping == False and duck.falling == False:
+                    # can't jump when jumping or falling
+                    duck.jumping = True
 
-            # grab item
-            elif event.key == pygame.K_j:
-                pass   
+                # grab item
+                elif event.key == pygame.K_j:
+                    pass   
 
-            # flap
-            elif event.key == pygame.K_l:
-                duck.flapping = True
-                duck.state = 'flap'
+                # flap
+                elif event.key == pygame.K_l:
+                    duck.flapping = True
+                    duck.state = 'flap'
 
-            # quack
-            elif event.key == pygame.K_SEMICOLON:
-                duck.drop()
-                if duck.quacking == False:
-                    quack.play()
-                    duck.quacking = True
+                # quack
+                elif event.key == pygame.K_SEMICOLON:
+                    duck.drop()
+                    if duck.quacking == False:
+                        quack.play()
+                        duck.quacking = True
 
-            # view checklist
-            elif event.key == pygame.K_TAB:
-                game.paused = not game.paused
-                if game.paused == True:
-                    #show checklist
-                    checklist.isVisible = True
-                    #displayCheckList()
-                else:
-                    checklist.isVisible = False
+                # view checklist
+                elif event.key == pygame.K_TAB:
+                    game.paused = not game.paused
+                    if game.paused == True:
+                        #show checklist
+                        checklist.isVisible = True
+                        #displayCheckList()
+                    else:
+                        checklist.isVisible = False
 
-            # see menu
-            elif event.key == pygame.K_ESCAPE:
-                pass
+                # see hitBoxes
+                elif event.key == pygame.K_ESCAPE:
+                    game.showHitBoxes = not game.showHitBoxes
 
-            # exit game
-            elif event.key == pygame.K_DELETE:
+                    #game.paused = not game.paused
+                    #menu.visible = not menu.isVisible
+            else:
+                # game not started
+                if event.key == pygame.K_i:
+                    # show info
+                    if splash.onDisplay == splash.instructionsList:
+                        splash.onDisplay = splash.info
+                        splash.spacing = 30
+                    else:
+                        splash.onDisplay = splash.instructionsList
+                        splash.spacing = 80
+
+                # start game
+                elif event.key == pygame.K_RETURN:
+                    game.started = True 
+                    game.initialMessage.visible = True
+
+            # can always exit game
+            if event.key == pygame.K_DELETE:
                 playing = False                         
 
-    keys = pygame.key.get_pressed()
-    # check if running (holding k, else, not running)
-    if keys[pygame.K_k]:
-        duck.running = True 
-    else:
-        duck.running = False
+    # check for key holds
+    if game.started == True:
+        keys = pygame.key.get_pressed()
+        # check if running (holding k, else, not running)
+        if keys[pygame.K_k]:
+            duck.running = True 
+        else:
+            duck.running = False
 
-    # check if trying to hold
-    if keys[pygame.K_j]:
-        if duck.heldItem == None:
-            duck.pickUp()
-    else:
-        duck.drop()
+        # check if trying to hold
+        if keys[pygame.K_j]:
+            if duck.heldItem == None:
+                duck.pickUp()
+        else:
+            duck.drop()
 
-    # check if moving in a direction
-    if keys[pygame.K_w]:
-        if duck.rect.bottom > groundY:
-            duck.walk(0, -1)
-    elif keys[pygame.K_s]:
-        duck.walk(0, 1)
-    elif keys[pygame.K_a]:
-        duck.walk(-1, 0)
-        duck.dir = 'left'
-    elif keys[pygame.K_d]:
-        duck.walk(1, 0)
-        duck.dir = 'right'
-    else:
-        duck.legIndex = 0
+        # check if moving in a direction
+        if keys[pygame.K_w]:
+            if duck.rect.bottom > groundY:
+                duck.walk(0, -1)
+        elif keys[pygame.K_s]:
+            duck.walk(0, 1)
+        elif keys[pygame.K_a]:
+            duck.walk(-1, 0)
+            duck.dir = 'left'
+        elif keys[pygame.K_d]:
+            duck.walk(1, 0)
+            duck.dir = 'right'
+        else:
+            duck.legIndex = 0
 
-    screen.fill((212, 242, 255))
-    pygame.draw.rect(screen, (100, 160, 110), (0, groundY, width, height - groundY))
-    updateAll()
-    if checklist.isVisible:
-        checklist.update()
+        screen.fill((212, 242, 255))
+        pygame.draw.rect(screen, (100, 160, 110), (0, groundY, width, height - groundY))
+        updateAll()
+        if checklist.isVisible:
+            checklist.update()
+        
+        if game.finalMessage.visible:
+            game.finalMessage.update()
+        if game.initialMessage.visible:
+            game.initialMessage.update()
+    else:
+        # game not started, show splash
+        splash.update()
+    
+    # menu
+    #if menu.isVisible:
+    #    menu.update()
+
     pygame.display.flip()
 
 pygame.quit()
